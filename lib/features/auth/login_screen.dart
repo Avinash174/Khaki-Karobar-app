@@ -76,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'KHAKI KAROBARI',
+                  'KHAKI KAROBAR',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,
@@ -87,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Khaki KrypTech (India) Pvt. Ltd.',
+                  'Run Your Business Smarter • Khaki KrypTech India',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:khaki_karobari/main.dart';
 
 void main() {
-  testWidgets('Khaki Karobari app smoke test', (WidgetTester tester) async {
+  testWidgets('Khaki Karobar app smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: KhakiKarobariApp(),
@@ -11,6 +11,6 @@ void main() {
     );
 
     // Verify brand title is loaded
-    expect(find.text('KHAKI KAROBARI'), findsOneWidget);
+    expect(find.text('KHAKI KAROBAR'), findsOneWidget);
   });
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Centralized Theme Tokens & Brand Colors for Khaki Karobari
+/// Centralized Theme Tokens & Brand Colors for Khaki Karobar
 /// Brand Identity: White + Red + Black
 class AppColors {
   AppColors._();
