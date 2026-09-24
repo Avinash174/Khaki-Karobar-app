@@ -41,7 +41,7 @@ class DashboardScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.textPrimary),
                 ),
                 const Text(
-                  'Khaki Karobari Live',
+                  'Khaki Karobar Live',
                   style: TextStyle(fontSize: 10, color: AppTheme.emeraldGreen),
                 ),
               ],

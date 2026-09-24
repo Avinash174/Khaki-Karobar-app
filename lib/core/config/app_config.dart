@@ -1,5 +1,5 @@
 class AppConfig {
-  static const String appName = 'Khaki Karobari';
+  static const String appName = 'Khaki Karobar';
   static const String companyName = 'Khaki KrypTech (India) Pvt. Ltd.';
   static const String brandTagline = 'Business ERP & GST Operations';
 

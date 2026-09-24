@@ -22,7 +22,7 @@ class KhakiKarobariApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
-      title: 'Khaki Karobari',
+      title: 'Khaki Karobar',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
