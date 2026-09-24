@@ -208,11 +208,31 @@ class InvoicePreviewScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 18),
 
-                  // Footer note
+                  // Footer note & branding
                   Center(
-                    child: Text(
-                      'Thank you for your business! Powered by Khaki Karobar',
-                      style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: context.textMuted),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: context.isDarkMode ? Colors.white24 : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 24,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Thank you for your business! • Powered by Khaki Karobar',
+                          style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: context.textMuted),
+                        ),
+                      ],
                     ),
                   ),
                 ],

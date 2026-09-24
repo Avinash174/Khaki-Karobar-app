@@ -46,51 +46,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Brand Header
+                // Brand Header with official logo
                 Center(
                   child: Container(
-                    width: 72,
-                    height: 72,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryRed,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: context.isDarkMode ? Colors.white24 : Colors.grey.shade200,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryRed.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          color: Colors.black.withValues(alpha: context.isDarkMode ? 0.3 : 0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Center(
-                      child: Text(
-                        'K',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 56,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
-                  'KHAKI KAROBAR',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Run Your Business Smarter • Khaki KrypTech India',
+                  'Run Your Business Smarter • All-in-One ERP & Billing',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
+                    fontWeight: FontWeight.w500,
                     color: context.textSecondary,
                   ),
                 ),

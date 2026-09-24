@@ -107,17 +107,25 @@ class DashboardScreen extends ConsumerWidget {
         title: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.primaryRed,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  'K',
-                  style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16),
+                border: Border.all(
+                  color: context.isDarkMode ? Colors.white24 : Colors.grey.shade200,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: context.isDarkMode ? 0.2 : 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(width: 10),

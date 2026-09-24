@@ -10,7 +10,7 @@ void main() {
       ),
     );
 
-    // Verify brand title is loaded
-    expect(find.text('KHAKI KAROBAR'), findsOneWidget);
+    // Verify brand subtitle or logo is loaded
+    expect(find.text('Run Your Business Smarter • All-in-One ERP & Billing'), findsOneWidget);
   });
 }

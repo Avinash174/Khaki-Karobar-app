@@ -261,7 +261,55 @@ class MoreScreen extends ConsumerWidget {
               },
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
+
+          // Brand Logo Footer
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: context.isDarkMode ? Colors.white24 : Colors.grey.shade200,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: context.isDarkMode ? 0.2 : 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'व्यापार बढ़े, हिसाब सधे।',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Khaki KrypTech India • v2.0',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.textSecondary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
