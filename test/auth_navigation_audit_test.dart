@@ -7,6 +7,8 @@ import 'package:khaki_karobari/main.dart';
 import 'package:khaki_karobari/features/onboarding/onboarding_screen.dart';
 import 'package:khaki_karobari/features/splash/splash_screen.dart';
 import 'package:khaki_karobari/features/auth/login_screen.dart';
+import 'package:khaki_karobari/features/auth/register_screen.dart';
+import 'package:khaki_karobari/features/auth/forgot_password_screen.dart';
 import 'package:khaki_karobari/providers/auth_provider.dart';
 import 'package:khaki_karobari/providers/onboarding_provider.dart';
 import 'package:khaki_karobari/services/auth_service.dart';
@@ -44,6 +46,19 @@ GoRouter _createAuditTestRouter(WidgetRef ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/otp-verification',
+        builder: (context, state) =>
+            const Scaffold(body: Text('AUDIT_OTP_SCREEN')),
       ),
       GoRoute(
         path: '/dashboard',
@@ -290,7 +305,7 @@ void main() {
       // Advance to Slide 2
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(find.text('Keep Your Stock Under Control'), findsOneWidget);
+      expect(find.text('Manage Your Stock Easily'), findsOneWidget);
 
       // Trigger back navigation
       final dynamic widgetsAppState = tester.state(find.byType(WidgetsApp));

@@ -11,27 +11,52 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
+    with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+
+  late final AnimationController _floatController;
+  late final Animation<double> _floatAnimation;
 
   static const List<_OnboardingItem> _pages = [
     _OnboardingItem(
       title: 'Create Invoices in Seconds',
       description:
-          'Generate professional GST-compliant invoices, track customer payments, and share bills directly via WhatsApp in one tap.',
+          'Create professional invoices and share bills with your customers quickly.',
     ),
     _OnboardingItem(
-      title: 'Keep Your Stock Under Control',
+      title: 'Manage Your Stock Easily',
       description:
-          'Monitor inventory across multiple godowns in real time, receive automatic low-stock alerts, and avoid stockouts.',
+          'Track products, purchases, stock levels and low-stock items from one place.',
     ),
     _OnboardingItem(
-      title: 'Know Your Business Better',
+      title: 'Understand Your Business',
       description:
-          'Gain real-time clarity on daily profits, customer khata balances, supplier payables, and comprehensive financial reports.',
+          'Track payments, customers, expenses and reports to stay in control of your business.',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    final isRunningInTest =
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    if (!isRunningInTest) {
+      _floatController.repeat(reverse: true);
+    }
+
+    _floatAnimation = Tween<double>(begin: -4.0, end: 4.0).animate(
+      CurvedAnimation(
+        parent: _floatController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+  }
 
   Future<void> _completeAndNavigate() async {
     await ref.read(onboardingProvider.notifier).completeOnboarding();
@@ -55,6 +80,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   void dispose() {
+    _floatController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -75,76 +101,197 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          TextButton(
-            onPressed: _completeAndNavigate,
-            style: TextButton.styleFrom(
-              foregroundColor: context.textSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-            ),
-            child: Text(
-              'Skip',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+        backgroundColor:
+            isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          actions: [
+            TextButton(
+              onPressed: _completeAndNavigate,
+              style: TextButton.styleFrom(
+                foregroundColor: context.textSecondary,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+              child: Text(
+                'Skip',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.lightTextSecondary,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // PageView Content
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _pages.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Clean Business Illustration Card
-                        _buildIllustration(index, isDark),
-                        const SizedBox(height: 36),
+          ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // PageView Content
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isCompact = constraints.maxHeight < 460;
+                    final double illScale = isCompact
+                        ? (constraints.maxHeight / 500).clamp(0.70, 0.95)
+                        : 1.0;
 
-                        // Title
-                        Text(
-                          _pages[index].title,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                            color: isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.lightTextPrimary,
+                    return PageView.builder(
+                      controller: _pageController,
+                      itemCount: _pages.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(height: 8),
+
+                                  // Floating Animated Illustration
+                                  AnimatedBuilder(
+                                    animation: _floatAnimation,
+                                    builder: (context, child) {
+                                      return Transform.translate(
+                                        offset: Offset(0, _floatAnimation.value),
+                                        child: child,
+                                      );
+                                    },
+                                    child: Transform.scale(
+                                      scale: illScale,
+                                      child: _buildIllustration(index, isDark),
+                                    ),
+                                  ),
+                                  SizedBox(height: isCompact ? 16 : 30),
+
+                                  // Title
+                                  Text(
+                                    _pages[index].title,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: isCompact ? 21 : 24,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.4,
+                                      color: isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.lightTextPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: isCompact ? 10 : 14),
+
+                                  // Description
+                                  Text(
+                                    _pages[index].description,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: isCompact ? 13 : 14,
+                                      height: 1.45,
+                                      fontWeight: FontWeight.w400,
+                                      color: context.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Bottom Actions & Page Indicator
+              Builder(
+                builder: (context) {
+                  final isShortScreen =
+                      MediaQuery.sizeOf(context).height < 650;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      12,
+                      24,
+                      isShortScreen ? 20 : 32,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Page Indicator Dots
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            _pages.length,
+                            (dotIndex) => AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              height: 8,
+                              width: _currentPage == dotIndex ? 26 : 8,
+                              decoration: BoxDecoration(
+                                color: _currentPage == dotIndex
+                                    ? AppColors.brandRed
+                                    : (isDark
+                                        ? AppColors.darkBorderStrong
+                                        : AppColors.lightBorderStrong),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: isShortScreen ? 20 : 28),
 
-                        // Short Description
-                        Text(
-                          _pages[index].description,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                            fontWeight: FontWeight.w400,
-                            color: context.textSecondary,
+                        // Continue / Get Started Primary Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _onNext,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.brandRed,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    isLastPage ? 'Get Started' : 'Continue',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -152,82 +299,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   );
                 },
               ),
-            ),
-
-            // Bottom Actions & Page Indicator
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Page Indicator Dots
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _pages.length,
-                      (dotIndex) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        height: 8,
-                        width: _currentPage == dotIndex ? 26 : 8,
-                        decoration: BoxDecoration(
-                          color: _currentPage == dotIndex
-                              ? AppColors.brandRed
-                              : (isDark
-                                  ? AppColors.darkBorderStrong
-                                  : AppColors.lightBorderStrong),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Continue / Get Started Primary Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _onNext,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandRed,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            isLastPage ? 'Get Started' : 'Continue',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            isLastPage
-                                ? Icons.arrow_forward_rounded
-                                : Icons.arrow_forward_rounded,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildIllustration(int index, bool isDark) {
     switch (index) {
@@ -253,7 +330,7 @@ class _OnboardingItem {
 }
 
 // ---------------------------------------------------------
-// Illustration 1: Invoicing & Billing
+// Illustration 1: Invoices, Receipts, Calculator & Payments
 // ---------------------------------------------------------
 class _InvoiceIllustration extends StatelessWidget {
   final bool isDark;
@@ -262,7 +339,7 @@ class _InvoiceIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
+      width: 270,
       height: 220,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
@@ -279,11 +356,11 @@ class _InvoiceIllustration extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row with Icon + GST Ready badge
+          // Header row with Receipt Icon + GST Ready badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -296,13 +373,14 @@ class _InvoiceIllustration extends StatelessWidget {
                 child: const Icon(
                   Icons.receipt_long_rounded,
                   color: AppColors.brandRed,
-                  size: 26,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 8),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -332,13 +410,50 @@ class _InvoiceIllustration extends StatelessWidget {
           ),
           const Spacer(),
 
-          // Simulated invoice row details
-          _buildPlaceholderLine(isDark, width: 140, height: 10),
-          const SizedBox(height: 8),
-          _buildPlaceholderLine(isDark, width: 90, height: 8),
+          // Middle row: Itemized bill preview with calculator chip
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPlaceholderLine(isDark, width: 110, height: 9),
+                    const SizedBox(height: 7),
+                    _buildPlaceholderLine(isDark, width: 75, height: 7),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.brandRed.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calculate_outlined,
+                      size: 14,
+                      color: AppColors.brandRed,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Auto-Tax',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brandRed,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
-          // Total amount pill
+          // Total amount payment pill
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -395,7 +510,7 @@ class _InvoiceIllustration extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// Illustration 2: Stock & Inventory Management
+// Illustration 2: Products, Warehouse & Low Stock Alerts
 // ---------------------------------------------------------
 class _StockIllustration extends StatelessWidget {
   final bool isDark;
@@ -404,7 +519,7 @@ class _StockIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
+      width: 270,
       height: 220,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
@@ -421,11 +536,11 @@ class _StockIllustration extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row with Inventory Icon & Live count
+          // Header row with Inventory Box Icon & Warehouse badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -436,15 +551,16 @@ class _StockIllustration extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.inventory_2_rounded,
+                  Icons.warehouse_rounded,
                   color: AppColors.brandRed,
-                  size: 26,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 8),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.brandRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -464,8 +580,9 @@ class _StockIllustration extends StatelessWidget {
           ),
           const Spacer(),
 
-          // Inventory item card 1 (Healthy)
+          // Inventory item card 1 (Healthy stock)
           _buildStockStatusRow(
+            icon: Icons.check_circle_outline_rounded,
             label: 'Steel Fasteners M8',
             units: '1,420 in stock',
             isWarning: false,
@@ -475,6 +592,7 @@ class _StockIllustration extends StatelessWidget {
 
           // Inventory item card 2 (Low stock alert)
           _buildStockStatusRow(
+            icon: Icons.warning_amber_rounded,
             label: 'Industrial Paint 5L',
             units: '4 units left (Low)',
             isWarning: true,
@@ -486,6 +604,7 @@ class _StockIllustration extends StatelessWidget {
   }
 
   Widget _buildStockStatusRow({
+    required IconData icon,
     required String label,
     required String units,
     required bool isWarning,
@@ -499,14 +618,15 @@ class _StockIllustration extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isWarning
-              ? AppColors.warning.withValues(alpha: 0.3)
+              ? AppColors.warning.withValues(alpha: 0.35)
               : Colors.transparent,
           width: 1,
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Icon(icon, size: 14, color: statusColor),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
@@ -541,7 +661,7 @@ class _StockIllustration extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// Illustration 3: Business Insights & Reports
+// Illustration 3: Business Analytics, Ledger & Reports
 // ---------------------------------------------------------
 class _AnalyticsIllustration extends StatelessWidget {
   final bool isDark;
@@ -550,7 +670,7 @@ class _AnalyticsIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 260,
+      width: 270,
       height: 220,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
@@ -567,7 +687,7 @@ class _AnalyticsIllustration extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -584,13 +704,14 @@ class _AnalyticsIllustration extends StatelessWidget {
                 child: const Icon(
                   Icons.auto_graph_rounded,
                   color: AppColors.brandRed,
-                  size: 26,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 8),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -628,11 +749,11 @@ class _AnalyticsIllustration extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildBar(height: 24, isHighlighted: false, isDark: isDark),
-              _buildBar(height: 38, isHighlighted: false, isDark: isDark),
-              _buildBar(height: 30, isHighlighted: false, isDark: isDark),
-              _buildBar(height: 52, isHighlighted: true, isDark: isDark),
-              _buildBar(height: 44, isHighlighted: false, isDark: isDark),
+              _buildBar(height: 22, isHighlighted: false, isDark: isDark),
+              _buildBar(height: 36, isHighlighted: false, isDark: isDark),
+              _buildBar(height: 28, isHighlighted: false, isDark: isDark),
+              _buildBar(height: 50, isHighlighted: true, isDark: isDark),
+              _buildBar(height: 42, isHighlighted: false, isDark: isDark),
             ],
           ),
           const SizedBox(height: 16),

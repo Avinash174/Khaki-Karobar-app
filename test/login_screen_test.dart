@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:khaki_karobari/features/auth/login_screen.dart';
+import 'package:khaki_karobari/features/auth/register_screen.dart';
+import 'package:khaki_karobari/features/auth/forgot_password_screen.dart';
+import 'package:khaki_karobari/features/auth/otp_verification_screen.dart';
+import 'package:khaki_karobari/features/settings/appearance_screen.dart';
 import 'package:khaki_karobari/providers/auth_provider.dart';
+import 'package:khaki_karobari/providers/theme_provider.dart';
 import 'package:khaki_karobari/services/auth_service.dart';
 import 'package:khaki_karobari/core/network/api_client.dart';
 
@@ -36,6 +42,40 @@ class _MockAuthService extends AuthService {
     }
     return {'user': null, 'business': null};
   }
+
+  @override
+  Future<void> requestOtp(String phone, {String purpose = 'LOGIN'}) async {}
+}
+
+GoRouter _createLoginTestRouter(Widget initialWidget) {
+  return GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => initialWidget,
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/otp-verification',
+        builder: (context, state) => const OtpVerificationScreen(
+          phone: '9876543210',
+          purpose: 'LOGIN',
+        ),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+    ],
+  );
 }
 
 void main() {
@@ -58,8 +98,8 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(_MockAuthService()),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -67,7 +107,7 @@ void main() {
 
       // Verify Header
       expect(find.text('Welcome Back'), findsOneWidget);
-      expect(find.text('Sign in to manage your business khata & invoices'),
+      expect(find.text('Manage your business smarter with Khaki Karobar.'),
           findsOneWidget);
 
       // Verify Fields & Buttons
@@ -96,8 +136,8 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(_MockAuthService()),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -114,7 +154,7 @@ void main() {
       expect(find.text('Forgot Password?'), findsNothing);
     });
 
-    testWidgets('Tapping Forgot Password opens dialog with information',
+    testWidgets('Tapping Forgot Password navigates to ForgotPasswordScreen',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 2.0;
@@ -126,8 +166,8 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(_MockAuthService()),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -135,17 +175,12 @@ void main() {
       await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Reset Password'), findsOneWidget);
-      expect(find.text('Understood'), findsOneWidget);
-
-      // Close dialog
-      await tester.tap(find.text('Understood'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Reset Password'), findsNothing);
+      expect(find.byType(ForgotPasswordScreen), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     });
 
-    testWidgets('Tapping Create Account opens business setup dialog',
+    testWidgets('Tapping Create Account navigates to RegisterScreen',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 2.0;
@@ -157,8 +192,8 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(_MockAuthService()),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -167,14 +202,8 @@ void main() {
       await tester.tap(find.text('Create Account'));
       await tester.pumpAndSettle();
 
-      expect(find.text('New Business Setup'), findsOneWidget);
-      expect(find.text('Close'), findsOneWidget);
-
-      // Close dialog
-      await tester.tap(find.text('Close'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('New Business Setup'), findsNothing);
+      expect(find.byType(RegisterScreen), findsOneWidget);
+      expect(find.text('Create Your Account'), findsOneWidget);
     });
 
     testWidgets('Shows validation error if input fields are empty',
@@ -189,8 +218,8 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(_MockAuthService()),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -227,8 +256,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -260,8 +289,8 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(
-            home: LoginScreen(),
+          child: MaterialApp.router(
+            routerConfig: _createLoginTestRouter(const LoginScreen()),
           ),
         ),
       );
@@ -279,6 +308,51 @@ void main() {
 
       // Error banner should be displayed
       expect(find.text('Invalid OTP code'), findsOneWidget);
+    });
+  });
+
+  group('Appearance / Theme Settings Screen Tests', () {
+    testWidgets('Renders all theme options: Light, Dark, System Default',
+        (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: AppearanceScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Appearance'), findsOneWidget);
+      expect(find.text('Light Theme'), findsOneWidget);
+      expect(find.text('Dark Theme'), findsOneWidget);
+      expect(find.text('System Default'), findsOneWidget);
+    });
+
+    testWidgets('Selecting Dark Theme updates themeProvider and persists',
+        (tester) async {
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: Consumer(
+            builder: (context, ref, child) {
+              container = ProviderScope.containerOf(context);
+              return const MaterialApp(
+                home: AppearanceScreen(),
+              );
+            },
+          ),
+        ),
+      );
+
+      // Select Dark Theme
+      await tester.tap(find.text('Dark Theme'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(themeProvider), equals(ThemeMode.dark));
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('khaki_theme_mode'), equals('dark'));
     });
   });
 }

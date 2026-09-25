@@ -100,6 +100,57 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> register({
+    required String name,
+    required String phone,
+    String? email,
+    required String password,
+    String? businessName,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _authService.register(
+        name: name,
+        phone: phone,
+        email: email,
+        password: password,
+        businessName: businessName,
+      );
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: true,
+        user: res['user'],
+        activeBusiness: res['business'],
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> requestOtp(String phone, {String purpose = 'LOGIN'}) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _authService.requestOtp(phone, purpose: purpose);
+      state = state.copyWith(isLoading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     state = AuthState();

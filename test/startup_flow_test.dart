@@ -123,14 +123,14 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Keep Your Stock Under Control'), findsOneWidget);
+      expect(find.text('Manage Your Stock Easily'), findsOneWidget);
       expect(find.text('Multi-Godown'), findsOneWidget);
 
       // Tap Continue -> Page 3
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Know Your Business Better'), findsOneWidget);
+      expect(find.text('Understand Your Business'), findsOneWidget);
       expect(find.text('Get Started'), findsOneWidget);
     });
 

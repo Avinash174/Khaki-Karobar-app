@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/theme_selector_dialog.dart';
 import '../../providers/auth_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -100,7 +99,7 @@ class SettingsScreen extends ConsumerWidget {
                   context.isDarkMode ? 'Dark' : 'Light',
                   style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.brandRed, fontSize: 12),
                 ),
-                onTap: () => showThemeSelectorDialog(context, ref),
+                onTap: () => context.push('/settings/appearance'),
               ),
               _buildSettingTile(
                 context,

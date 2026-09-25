@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/theme_selector_dialog.dart';
 import '../../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -68,146 +67,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return error.replaceAll('Exception: ', '').trim();
   }
 
-  void _showForgotPasswordDialog(BuildContext context) {
-    final isDark = context.isDarkMode;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-        ),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.brandRed.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.lock_reset_rounded,
-                color: AppColors.brandRed,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Reset Password',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'To reset your password, please contact your business administrator or customer support with your registered business phone number.',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.5,
-            color: context.textSecondary,
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandRed,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-            child: const Text('Understood'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRegisterDialog(BuildContext context) {
-    final isDark = context.isDarkMode;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-        ),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.brandRed.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.store_rounded,
-                color: AppColors.brandRed,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'New Business Setup',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.darkTextPrimary
-                    : AppColors.lightTextPrimary,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Join Khaki Karobar to streamline your invoicing, inventory, and ledger. Please contact your organization owner or admin to get your login credentials.',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.5,
-            color: context.textSecondary,
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandRed,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            ),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -215,23 +74,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            tooltip: 'Switch Theme',
-            icon: Icon(
-              isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-              color: isDark ? Colors.indigo.shade200 : Colors.amber.shade700,
-              size: 20,
-            ),
-            onPressed: () => showThemeSelectorDialog(context, ref),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -293,7 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // 3. Subtitle
                   Text(
-                    'Sign in to manage your business khata & invoices',
+                    'Manage your business smarter with Khaki Karobar.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -499,7 +341,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () =>
-                                    _showForgotPasswordDialog(context),
+                                    context.push('/forgot-password'),
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
@@ -590,15 +432,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   : Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(
-                                          _isOtpMode
-                                              ? 'Verify & Sign In'
-                                              : 'Sign In',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.2,
+                                        Flexible(
+                                          child: Text(
+                                            _isOtpMode
+                                                ? 'Verify & Sign In'
+                                                : 'Sign In',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.2,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
@@ -630,7 +476,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () => _showRegisterDialog(context),
+                        onPressed: () => context.push('/register'),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           minimumSize: Size.zero,
@@ -728,23 +574,28 @@ class _ModeTab extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: 16,
+              size: 15,
               color: isSelected ? AppColors.brandRed : context.textSecondary,
             ),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? (isDark
-                        ? AppColors.darkTextPrimary
-                        : AppColors.lightTextPrimary)
-                    : context.textSecondary,
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? (isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.lightTextPrimary)
+                      : context.textSecondary,
+                ),
               ),
             ),
           ],

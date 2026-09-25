@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/auth/login_screen.dart';
+import '../features/auth/register_screen.dart';
+import '../features/auth/forgot_password_screen.dart';
+import '../features/auth/otp_verification_screen.dart';
 import '../features/main/main_shell_screen.dart';
 import '../features/sales/sales_screen.dart';
 import '../features/sales/new_sale_screen.dart';
@@ -16,6 +19,7 @@ import '../features/ledger/ledger_screen.dart';
 import '../features/reports/reports_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/appearance_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/onboarding_provider.dart';
 
@@ -40,7 +44,10 @@ class RouterNotifier extends ChangeNotifier {
     final location = state.matchedLocation;
     final isSplash = location == '/splash';
     final isOnboarding = location == '/onboarding';
-    final isLogin = location == '/login';
+    final isAuthRoute = location == '/login' ||
+        location == '/register' ||
+        location == '/forgot-password' ||
+        location == '/otp-verification';
 
     // 1. Always allow splash screen to render its startup flow
     if (isSplash) {
@@ -57,7 +64,7 @@ class RouterNotifier extends ChangeNotifier {
         return null;
       }
 
-      if (isLogin) {
+      if (isAuthRoute) {
         return null;
       }
 
@@ -67,8 +74,8 @@ class RouterNotifier extends ChangeNotifier {
 
     // 3. Authenticated user flow
     if (authState.isAuthenticated) {
-      // Authenticated users should not see onboarding or login
-      if (isLogin || isOnboarding) {
+      // Authenticated users should not see onboarding or auth screens
+      if (isAuthRoute || isOnboarding) {
         return '/dashboard';
       }
       return null;
@@ -101,6 +108,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/otp-verification',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final phone = extra?['phone'] as String? ?? '9876543211';
+          final purpose = extra?['purpose'] as String? ?? 'LOGIN';
+          return OtpVerificationScreen(
+            phone: phone,
+            purpose: purpose,
+          );
+        },
       ),
       GoRoute(
         path: '/dashboard',
@@ -155,6 +182,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+        routes: [
+          GoRoute(
+            path: 'appearance',
+            builder: (context, state) => const AppearanceScreen(),
+          ),
+        ],
       ),
     ],
   );
