@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/customer_model.dart';
+import '../../providers/customer_provider.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/dashboard_provider.dart';
+import '../sales/sales_screen.dart';
 
 class CustomerDetailScreen extends ConsumerStatefulWidget {
   final CustomerModel customer;
@@ -15,11 +19,13 @@ class CustomerDetailScreen extends ConsumerStatefulWidget {
 
 class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late double _currentBalance;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _currentBalance = widget.customer.currentBalance;
   }
 
   @override
@@ -30,7 +36,9 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
 
   void _showReceivePaymentDialog() {
     final amtCtrl = TextEditingController();
-    String selectedMode = 'UPI / Online';
+    final refNumCtrl = TextEditingController();
+    String selectedMode = 'UPI';
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -79,7 +87,7 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
                 keyboardType: TextInputType.number,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  labelText: 'Amount Received (₹)',
+                  labelText: 'Amount Received (₹) *',
                   hintText: '0.00',
                   prefixText: '₹ ',
                 ),
@@ -89,28 +97,84 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
                 initialValue: selectedMode,
                 dropdownColor: context.surfaceColor,
                 decoration: const InputDecoration(labelText: 'Payment Mode'),
-                items: ['UPI / Online', 'Cash', 'Bank Transfer (NEFT)', 'Cheque']
+                items: ['UPI', 'Cash', 'Bank Transfer', 'Cheque']
                     .map((m) => DropdownMenuItem(value: m, child: Text(m, style: TextStyle(color: context.textPrimary))))
                     .toList(),
                 onChanged: (val) {
                   if (val != null) setSheetState(() => selectedMode = val);
                 },
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: refNumCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Reference Number (UTR / Ref)',
+                  hintText: 'Optional',
+                ),
+              ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  final amt = double.tryParse(amtCtrl.text.trim()) ?? 0;
-                  if (amt > 0) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Payment of ₹$amt recorded successfully!'),
-                        backgroundColor: AppTheme.emeraldGreen,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Record Payment'),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final amt = double.tryParse(amtCtrl.text.trim()) ?? 0;
+                        if (amt <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a valid amount')),
+                          );
+                          return;
+                        }
+
+                        setSheetState(() => isSubmitting = true);
+                        final messenger = ScaffoldMessenger.of(context);
+
+                        String backendMethod = 'CASH';
+                        if (selectedMode == 'UPI') backendMethod = 'UPI';
+                        if (selectedMode == 'Bank Transfer') backendMethod = 'BANK_TRANSFER';
+                        if (selectedMode == 'Cheque') backendMethod = 'CHEQUE';
+
+                        try {
+                          await ref.read(paymentServiceProvider).createPayment(
+                                partyType: 'CUSTOMER',
+                                customerId: widget.customer.id,
+                                amount: amt,
+                                paymentMethod: backendMethod,
+                                referenceNumber: refNumCtrl.text.trim().isNotEmpty ? refNumCtrl.text.trim() : null,
+                              );
+
+                          ref.invalidate(customerLedgerProvider(widget.customer.id));
+                          ref.invalidate(customersFutureProvider);
+                          ref.invalidate(paymentsFutureProvider);
+                          ref.invalidate(dashboardMetricsProvider);
+
+                          setState(() {
+                            _currentBalance = (_currentBalance - amt).clamp(0, double.infinity);
+                          });
+
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Payment of ₹$amt recorded successfully!'),
+                                backgroundColor: AppTheme.emeraldGreen,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setSheetState(() => isSubmitting = false);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString().replaceAll('Exception: ', '')),
+                                backgroundColor: AppTheme.primaryRed,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Record Payment'),
               ),
             ],
           ),
@@ -122,7 +186,7 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
   @override
   Widget build(BuildContext context) {
     final c = widget.customer;
-    final hasDue = c.currentBalance > 0;
+    final hasDue = _currentBalance > 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -196,40 +260,38 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '₹${c.currentBalance.toStringAsFixed(0)}',
+                          '₹${_currentBalance.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
-                            color: hasDue ? AppTheme.primaryRed : AppTheme.emeraldGreen,
+                            color: hasDue ? AppTheme.amberGold : AppTheme.emeraldGreen,
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: hasDue ? AppTheme.primaryRed.withValues(alpha: 0.12) : AppTheme.emeraldGreen.withValues(alpha: 0.12),
+                        color: (hasDue ? AppTheme.amberGold : AppTheme.emeraldGreen).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        hasDue ? 'Receivable' : 'Settled',
+                        hasDue ? 'Payment Due' : 'All Clear',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: hasDue ? AppTheme.primaryRed : AppTheme.emeraldGreen,
+                          color: hasDue ? AppTheme.amberGold : AppTheme.emeraldGreen,
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-
-                // Quick Communication Actions
                 Row(
                   children: [
                     Expanded(
                       child: _buildActionButton(
-                        icon: Icons.phone,
+                        icon: Icons.call,
                         label: 'Call',
                         color: Colors.blueAccent,
                         onTap: () {
@@ -242,7 +304,7 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildActionButton(
-                        icon: Icons.chat_bubble_outline,
+                        icon: Icons.chat,
                         label: 'WhatsApp',
                         color: AppTheme.emeraldGreen,
                         onTap: () {
@@ -365,75 +427,119 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
   }
 
   Widget _buildSalesTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildTransactionRow(
-          title: 'Invoice INV-1024',
-          date: '24 Sep 2026',
-          amount: '₹4,500',
-          status: 'PAID',
-          statusColor: AppTheme.emeraldGreen,
-        ),
-        _buildTransactionRow(
-          title: 'Invoice INV-1018',
-          date: '18 Sep 2026',
-          amount: '₹8,000',
-          status: 'UNPAID',
-          statusColor: AppTheme.primaryRed,
-        ),
-      ],
+    final invoicesAsync = ref.watch(invoicesListProvider);
+
+    return invoicesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandRed)),
+      error: (err, stack) => Center(child: Text('Failed to load invoices', style: TextStyle(color: context.textSecondary))),
+      data: (invoices) {
+        final custInvoices = invoices.where((inv) {
+          return inv.customerName.toLowerCase() == widget.customer.name.toLowerCase() ||
+              (inv.customerPhone.isNotEmpty && inv.customerPhone == widget.customer.phone);
+        }).toList();
+
+        if (custInvoices.isEmpty) {
+          return Center(
+            child: Text('No sales invoices for this client yet.', style: TextStyle(color: context.textSecondary)),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: custInvoices.length,
+          itemBuilder: (context, index) {
+            final inv = custInvoices[index];
+            final formattedDate =
+                '${inv.invoiceDate.day.toString().padLeft(2, '0')}/${inv.invoiceDate.month.toString().padLeft(2, '0')}/${inv.invoiceDate.year}';
+            final isPaid = inv.status == 'PAID';
+
+            return _buildTransactionRow(
+              title: 'Invoice ${inv.invoiceNumber}',
+              date: formattedDate,
+              amount: '₹${inv.grandTotal.toStringAsFixed(0)}',
+              status: inv.status,
+              statusColor: isPaid ? AppTheme.emeraldGreen : AppTheme.primaryRed,
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildPaymentsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildTransactionRow(
-          title: 'Payment Received (UPI)',
-          date: '23 Sep 2026',
-          amount: '₹3,000',
-          status: 'SUCCESS',
-          statusColor: AppTheme.emeraldGreen,
-        ),
-        _buildTransactionRow(
-          title: 'Payment Received (Cash)',
-          date: '10 Sep 2026',
-          amount: '₹5,000',
-          status: 'SUCCESS',
-          statusColor: AppTheme.emeraldGreen,
-        ),
-      ],
+    final paymentsAsync = ref.watch(paymentsFutureProvider);
+
+    return paymentsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandRed)),
+      error: (err, stack) => Center(child: Text('Failed to load payments', style: TextStyle(color: context.textSecondary))),
+      data: (payments) {
+        final custPayments = payments.where((p) {
+          return p.partyName.toLowerCase() == widget.customer.name.toLowerCase();
+        }).toList();
+
+        if (custPayments.isEmpty) {
+          return Center(
+            child: Text('No recorded payments for this customer.', style: TextStyle(color: context.textSecondary)),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: custPayments.length,
+          itemBuilder: (context, index) {
+            final p = custPayments[index];
+            final formattedDate =
+                '${p.paymentDate.day.toString().padLeft(2, '0')}/${p.paymentDate.month.toString().padLeft(2, '0')}/${p.paymentDate.year}';
+
+            return _buildTransactionRow(
+              title: 'Payment Received (${p.paymentMethod})',
+              date: formattedDate,
+              amount: '₹${p.amount.toStringAsFixed(0)}',
+              status: 'COMPLETED',
+              statusColor: AppTheme.emeraldGreen,
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildLedgerTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildLedgerEntry(
-          date: '24 Sep 2026',
-          type: 'Invoice #1024',
-          amount: '+₹5,000',
-          runningBalance: '₹12,500',
-          isDebit: true,
-        ),
-        _buildLedgerEntry(
-          date: '23 Sep 2026',
-          type: 'Payment Received',
-          amount: '-₹3,000',
-          runningBalance: '₹7,500',
-          isDebit: false,
-        ),
-        _buildLedgerEntry(
-          date: '15 Sep 2026',
-          type: 'Invoice #1012',
-          amount: '+₹10,500',
-          runningBalance: '₹10,500',
-          isDebit: true,
-        ),
-      ],
+    final ledgerAsync = ref.watch(customerLedgerProvider(widget.customer.id));
+
+    return ledgerAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandRed)),
+      error: (err, stack) => Center(child: Text('Failed to load ledger', style: TextStyle(color: context.textSecondary))),
+      data: (entries) {
+        if (entries.isEmpty) {
+          return Center(
+            child: Text('No ledger entries recorded yet.', style: TextStyle(color: context.textSecondary)),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: entries.length,
+          itemBuilder: (context, index) {
+            final entry = entries[index];
+            final dateStr = entry['date'] != null
+                ? DateTime.parse(entry['date']).toLocal().toString().split(' ')[0]
+                : 'Recent';
+            final desc = entry['description'] ?? entry['referenceType'] ?? 'Transaction';
+            final amt = (entry['amount'] as num?)?.toDouble() ?? 0.0;
+            final isDebit = entry['entryType'] == 'DEBIT';
+            final balanceAfter = (entry['balanceAfter'] as num?)?.toDouble() ?? 0.0;
+
+            return _buildLedgerEntry(
+              date: dateStr,
+              type: desc,
+              amount: '${isDebit ? "+" : "-"}₹${amt.toStringAsFixed(0)}',
+              runningBalance: '₹${balanceAfter.toStringAsFixed(0)}',
+              isDebit: isDebit,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -463,22 +569,47 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
         border: Border.all(color: context.borderColor),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.textPrimary)),
-              const SizedBox(height: 2),
-              Text(date, style: TextStyle(fontSize: 11, color: context.textSecondary)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  date,
+                  style: TextStyle(fontSize: 11, color: context.textSecondary),
+                ),
+              ],
+            ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(amount, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.textPrimary)),
+              Text(
+                amount,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(status, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: statusColor)),
+              Text(
+                status,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: statusColor,
+                ),
+              ),
             ],
           ),
         ],
@@ -502,15 +633,26 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
         border: Border.all(color: context.borderColor),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(type, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.textPrimary)),
-              const SizedBox(height: 2),
-              Text(date, style: TextStyle(fontSize: 11, color: context.textSecondary)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  type,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: context.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  date,
+                  style: TextStyle(fontSize: 11, color: context.textSecondary),
+                ),
+              ],
+            ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -519,14 +661,17 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> wit
                 amount,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                   color: isDebit ? AppTheme.primaryRed : AppTheme.emeraldGreen,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 'Bal: $runningBalance',
-                style: TextStyle(fontSize: 10, color: context.textMuted),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: context.textMuted,
+                ),
               ),
             ],
           ),

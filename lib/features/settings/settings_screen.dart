@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_selector_dialog.dart';
 import '../../providers/auth_provider.dart';
@@ -206,6 +207,35 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () {},
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+
+          // Logout Action
+          Container(
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: context.borderColor),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.brandRed),
+              title: const Text(
+                'Log Out',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.brandRed,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                'Sign out of your session on this device',
+                style: TextStyle(fontSize: 11, color: context.textSecondary),
+              ),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go('/login');
+              },
+            ),
           ),
           const SizedBox(height: 24),
         ],

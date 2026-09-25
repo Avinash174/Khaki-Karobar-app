@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
-import '../sales/new_sale_screen.dart';
+import '../../providers/product_provider.dart';
 import 'product_detail_screen.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -192,9 +192,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
       body: productsAsync.when(
         data: (products) {
-          final totalCount = products.isEmpty ? 1240 : products.length;
-          final lowStockCount = products.isEmpty ? 28 : products.where((p) => p.isLowStock && p.currentStock > 0).length;
-          final outOfStockCount = products.isEmpty ? 7 : products.where((p) => p.currentStock <= 0).length;
+          final totalCount = products.length;
+          final lowStockCount = products.where((p) => p.isLowStock && p.currentStock > 0).length;
+          final outOfStockCount = products.where((p) => p.currentStock <= 0).length;
 
           // Filter by search & stock state
           final filtered = products.where((p) {

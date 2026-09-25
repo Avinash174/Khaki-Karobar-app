@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../providers/payment_provider.dart';
+import '../../providers/customer_provider.dart';
+import '../../providers/supplier_provider.dart';
+import '../../providers/dashboard_provider.dart';
 
 class PaymentsScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -16,63 +20,6 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _transactions = [
-    {
-      'party': 'Rahul Traders',
-      'type': 'Received',
-      'date': 'Today, 11:30 AM',
-      'amount': 4500.0,
-      'method': 'UPI',
-      'status': 'Completed',
-      'tab': 'Received',
-    },
-    {
-      'party': 'National Textiles Ltd',
-      'type': 'Paid',
-      'date': 'Today, 09:15 AM',
-      'amount': 15000.0,
-      'method': 'Bank Transfer',
-      'status': 'Completed',
-      'tab': 'Paid',
-    },
-    {
-      'party': 'Raj Enterprises',
-      'type': 'Received',
-      'date': 'Yesterday',
-      'amount': 14750.0,
-      'method': 'Cash',
-      'status': 'Completed',
-      'tab': 'Received',
-    },
-    {
-      'party': 'Vikas Raw Materials Co',
-      'type': 'Paid',
-      'date': '22 Sep 2026',
-      'amount': 12000.0,
-      'method': 'Cheque #4012',
-      'status': 'Completed',
-      'tab': 'Paid',
-    },
-    {
-      'party': 'City Supermarket',
-      'type': 'Received',
-      'date': '20 Sep 2026',
-      'amount': 8200.0,
-      'method': 'UPI / QR',
-      'status': 'Pending Verification',
-      'tab': 'Pending',
-    },
-    {
-      'party': 'Apex Commodities',
-      'type': 'Paid',
-      'date': '19 Sep 2026',
-      'amount': 25000.0,
-      'method': 'RTGS',
-      'status': 'Processing',
-      'tab': 'Pending',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -87,10 +34,14 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
   }
 
   void _showRecordPaymentDialog() {
-    final partyCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
-    String type = 'Received';
+    final notesCtrl = TextEditingController();
+    final refNumCtrl = TextEditingController();
+    String type = 'Received'; // 'Received' (IN) | 'Paid' (OUT)
     String method = 'UPI';
+    String? selectedCustomerId;
+    String? selectedSupplierId;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -100,126 +51,216 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        builder: (context, setSheetState) {
+          final customers = ref.watch(customersFutureProvider).valueOrNull ?? [];
+          final suppliers = ref.watch(suppliersFutureProvider).valueOrNull ?? [];
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Record Payment',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: context.textPrimary,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Record Payment',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Payment In (Received)')),
+                          selected: type == 'Received',
+                          selectedColor: AppTheme.emeraldGreen,
+                          onSelected: (_) => setSheetState(() {
+                            type = 'Received';
+                            selectedSupplierId = null;
+                          }),
+                          labelStyle: TextStyle(
+                            color: type == 'Received' ? Colors.white : context.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Payment Out (Paid)')),
+                          selected: type == 'Paid',
+                          selectedColor: AppTheme.primaryRed,
+                          onSelected: (_) => setSheetState(() {
+                            type = 'Paid';
+                            selectedCustomerId = null;
+                          }),
+                          labelStyle: TextStyle(
+                            color: type == 'Paid' ? Colors.white : context.textSecondary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (type == 'Received') ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCustomerId,
+                      dropdownColor: context.surfaceColor,
+                      decoration: const InputDecoration(labelText: 'Select Customer *'),
+                      items: customers
+                          .map((c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text('${c.name} (${c.phone})', style: TextStyle(color: context.textPrimary)),
+                              ))
+                          .toList(),
+                      onChanged: (val) => setSheetState(() => selectedCustomerId = val),
+                    ),
+                  ] else ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedSupplierId,
+                      dropdownColor: context.surfaceColor,
+                      decoration: const InputDecoration(labelText: 'Select Supplier *'),
+                      items: suppliers
+                          .map((s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text('${s.name} (${s.phone})', style: TextStyle(color: context.textPrimary)),
+                              ))
+                          .toList(),
+                      onChanged: (val) => setSheetState(() => selectedSupplierId = val),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Amount (₹) *',
+                      hintText: '0.00',
+                      prefixText: '₹ ',
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(ctx),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: method,
+                    dropdownColor: context.surfaceColor,
+                    decoration: const InputDecoration(labelText: 'Payment Method'),
+                    items: ['UPI', 'Cash', 'Bank Transfer', 'Cheque']
+                        .map((m) => DropdownMenuItem(value: m, child: Text(m, style: TextStyle(color: context.textPrimary))))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setSheetState(() => method = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: refNumCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Reference # (UPI / Cheque / UTR)',
+                      hintText: 'Optional reference',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            final amt = double.tryParse(amountCtrl.text.trim()) ?? 0;
+                            if (amt <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please enter a valid amount')),
+                              );
+                              return;
+                            }
+
+                            if (type == 'Received' && selectedCustomerId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please select a customer')),
+                              );
+                              return;
+                            }
+
+                            if (type == 'Paid' && selectedSupplierId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please select a supplier')),
+                              );
+                              return;
+                            }
+
+                            setSheetState(() => isSubmitting = true);
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            String backendMethod = 'CASH';
+                            if (method == 'UPI') backendMethod = 'UPI';
+                            if (method == 'Bank Transfer') backendMethod = 'BANK_TRANSFER';
+                            if (method == 'Cheque') backendMethod = 'CHEQUE';
+
+                            try {
+                              await ref.read(paymentServiceProvider).createPayment(
+                                    partyType: type == 'Received' ? 'CUSTOMER' : 'SUPPLIER',
+                                    customerId: selectedCustomerId,
+                                    supplierId: selectedSupplierId,
+                                    amount: amt,
+                                    paymentMethod: backendMethod,
+                                    referenceNumber: refNumCtrl.text.trim().isNotEmpty ? refNumCtrl.text.trim() : null,
+                                    notes: notesCtrl.text.trim().isNotEmpty ? notesCtrl.text.trim() : null,
+                                  );
+
+                              ref.invalidate(paymentsFutureProvider);
+                              ref.invalidate(customersFutureProvider);
+                              ref.invalidate(suppliersFutureProvider);
+                              ref.invalidate(dashboardMetricsProvider);
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Payment of ₹$amt recorded successfully!'),
+                                    backgroundColor: AppTheme.emeraldGreen,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setSheetState(() => isSubmitting = false);
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString().replaceAll('Exception: ', '')),
+                                    backgroundColor: AppTheme.primaryRed,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    child: isSubmitting
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Save Payment Entry'),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('Payment In (Received)')),
-                      selected: type == 'Received',
-                      selectedColor: AppTheme.emeraldGreen,
-                      onSelected: (_) => setSheetState(() => type = 'Received'),
-                      labelStyle: TextStyle(
-                        color: type == 'Received' ? Colors.white : context.textSecondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('Payment Out (Paid)')),
-                      selected: type == 'Paid',
-                      selectedColor: AppTheme.primaryRed,
-                      onSelected: (_) => setSheetState(() => type = 'Paid'),
-                      labelStyle: TextStyle(
-                        color: type == 'Paid' ? Colors.white : context.textSecondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: partyCtrl,
-                decoration: InputDecoration(
-                  labelText: type == 'Received' ? 'Customer / Party Name' : 'Supplier / Vendor Name',
-                  hintText: 'e.g. Rahul Traders',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Amount (₹)',
-                  hintText: '0.00',
-                  prefixText: '₹ ',
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: method,
-                dropdownColor: context.surfaceColor,
-                decoration: const InputDecoration(labelText: 'Payment Method'),
-                items: ['UPI', 'Cash', 'Bank Transfer (NEFT/IMPS)', 'Cheque', 'Card']
-                    .map((m) => DropdownMenuItem(value: m, child: Text(m, style: TextStyle(color: context.textPrimary))))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) setSheetState(() => method = val);
-                },
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  final amt = double.tryParse(amountCtrl.text.trim()) ?? 0;
-                  if (partyCtrl.text.trim().isNotEmpty && amt > 0) {
-                    setState(() {
-                      _transactions.insert(0, {
-                        'party': partyCtrl.text.trim(),
-                        'type': type,
-                        'date': 'Just now',
-                        'amount': amt,
-                        'method': method,
-                        'status': 'Completed',
-                        'tab': type,
-                      });
-                    });
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Payment of ₹$amt recorded successfully!'),
-                        backgroundColor: AppTheme.emeraldGreen,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('Save Payment Entry'),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -264,7 +305,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
               tabs: const [
                 Tab(text: 'Received (In)'),
                 Tab(text: 'Paid (Out)'),
-                Tab(text: 'Pending'),
+                Tab(text: 'All Payments'),
               ],
             ),
           ),
@@ -300,7 +341,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
               children: [
                 _buildTransactionList('Received'),
                 _buildTransactionList('Paid'),
-                _buildTransactionList('Pending'),
+                _buildTransactionList('All'),
               ],
             ),
           ),
@@ -317,136 +358,180 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> with SingleTick
   }
 
   Widget _buildTransactionList(String tabKey) {
-    final filtered = _transactions.where((t) {
-      final matchesTab = t['tab'] == tabKey;
-      final q = _searchQuery.toLowerCase();
-      final matchesSearch = _searchQuery.isEmpty ||
-          (t['party'] as String).toLowerCase().contains(q) ||
-          (t['method'] as String).toLowerCase().contains(q);
-      return matchesTab && matchesSearch;
-    }).toList();
+    final paymentsAsync = ref.watch(paymentsFutureProvider);
 
-    if (filtered.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.payment, size: 48, color: context.textMuted),
-              const SizedBox(height: 12),
-              Text(
-                'No $tabKey payments',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.textPrimary),
-              ),
-              const SizedBox(height: 6),
-              Text('Entries will show here once recorded.', style: TextStyle(color: context.textSecondary, fontSize: 13)),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Record Payment'),
-                onPressed: _showRecordPaymentDialog,
-              ),
-            ],
-          ),
+    return paymentsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.brandRed)),
+      error: (err, stack) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Failed to load payments', style: TextStyle(color: context.textSecondary)),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () => ref.refresh(paymentsFutureProvider),
+              child: const Text('Retry'),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+      data: (payments) {
+        final filtered = payments.where((t) {
+          final isReceived = t.type == 'IN' || t.partyType == 'CUSTOMER';
+          final matchesTab = tabKey == 'All'
+              ? true
+              : tabKey == 'Received'
+                  ? isReceived
+                  : !isReceived;
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      itemCount: filtered.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final t = filtered[index];
-        final amount = t['amount'] as double;
-        final isReceived = t['type'] == 'Received';
+          final q = _searchQuery.toLowerCase();
+          final matchesSearch = _searchQuery.isEmpty ||
+              t.partyName.toLowerCase().contains(q) ||
+              t.paymentMethod.toLowerCase().contains(q) ||
+              (t.referenceNumber?.toLowerCase().contains(q) ?? false);
+          return matchesTab && matchesSearch;
+        }).toList();
 
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: context.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.borderColor),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isReceived
-                      ? AppTheme.emeraldGreen.withValues(alpha: 0.12)
-                      : AppTheme.primaryRed.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  isReceived ? Icons.call_received : Icons.call_made,
-                  size: 20,
-                  color: isReceived ? AppTheme.emeraldGreen : AppTheme.primaryRed,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t['party'],
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+        if (filtered.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: () async => ref.refresh(paymentsFutureProvider),
+            child: ListView(
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.payment, size: 48, color: context.textMuted),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No $tabKey payments',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Entries will show here once recorded.',
+                          style: TextStyle(color: context.textSecondary, fontSize: 13),
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Record Payment'),
+                          onPressed: _showRecordPaymentDialog,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Row(
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(paymentsFutureProvider),
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            itemCount: filtered.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final t = filtered[index];
+              final isReceived = t.type == 'IN' || t.partyType == 'CUSTOMER';
+              final formattedDate =
+                  '${t.paymentDate.day.toString().padLeft(2, '0')}/${t.paymentDate.month.toString().padLeft(2, '0')}/${t.paymentDate.year}';
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: context.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isReceived
+                            ? AppTheme.emeraldGreen.withValues(alpha: 0.12)
+                            : AppTheme.primaryRed.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isReceived ? Icons.call_received : Icons.call_made,
+                        size: 20,
+                        color: isReceived ? AppTheme.emeraldGreen : AppTheme.primaryRed,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.partyName,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: context.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                t.paymentMethod,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text('•', style: TextStyle(fontSize: 10, color: context.textMuted)),
+                              const SizedBox(width: 6),
+                              Text(
+                                formattedDate,
+                                style: TextStyle(fontSize: 11, color: context.textMuted),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          t['method'],
+                          '${isReceived ? "+" : "-"}₹${t.amount.toStringAsFixed(0)}',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: context.textSecondary,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: isReceived ? AppTheme.emeraldGreen : AppTheme.primaryRed,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Text('•', style: TextStyle(fontSize: 10, color: context.textMuted)),
-                        const SizedBox(width: 6),
-                        Text(
-                          t['date'],
-                          style: TextStyle(fontSize: 11, color: context.textMuted),
-                        ),
+                        if (t.referenceNumber != null && t.referenceNumber!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            t.referenceNumber!,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: context.textMuted,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${isReceived ? "+" : "-"}₹${amount.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: isReceived ? AppTheme.emeraldGreen : AppTheme.primaryRed,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    t['status'],
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: context.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              );
+            },
           ),
         );
       },

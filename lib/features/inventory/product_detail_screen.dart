@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/product_model.dart';
-import '../sales/new_sale_screen.dart';
+import '../../providers/product_provider.dart';
+import '../../providers/dashboard_provider.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final ProductModel product;
@@ -15,6 +16,7 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   late double _currentStock;
+  bool _isAdjusting = false;
 
   @override
   void initState() {
@@ -24,6 +26,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   void _showAdjustStockDialog() {
     final qtyController = TextEditingController();
+    final reasonController = TextEditingController();
     bool isAddition = true;
 
     showDialog(
@@ -89,6 +92,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   hintText: 'e.g. 10',
                 ),
               ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Reason / Audit Note',
+                  hintText: 'e.g. Broken in transit / count audit',
+                ),
+              ),
             ],
           ),
           actions: [
@@ -97,27 +108,65 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               child: Text('Cancel', style: TextStyle(color: context.textSecondary)),
             ),
             ElevatedButton(
-              onPressed: () {
-                final qty = double.tryParse(qtyController.text.trim()) ?? 0;
-                if (qty > 0) {
-                  setState(() {
-                    if (isAddition) {
-                      _currentStock += qty;
-                    } else {
-                      _currentStock = (_currentStock - qty).clamp(0, double.infinity);
-                    }
-                  });
-                  ref.invalidate(productsFutureProvider);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Stock adjusted successfully to $_currentStock ${widget.product.unit}'),
-                      backgroundColor: AppTheme.emeraldGreen,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Update Stock'),
+              onPressed: _isAdjusting
+                  ? null
+                  : () async {
+                      final qty = double.tryParse(qtyController.text.trim()) ?? 0;
+                      if (qty <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a valid quantity')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => _isAdjusting = true);
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      try {
+                        final adjustmentType = isAddition ? 'ADD' : 'SUBTRACT';
+                        final res = await ref.read(productServiceProvider).adjustStock(
+                              productId: widget.product.id,
+                              adjustmentType: adjustmentType,
+                              quantity: qty,
+                              notes: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : null,
+                            );
+
+                        ref.invalidate(productsFutureProvider);
+                        ref.invalidate(lowStockProductsProvider);
+                        ref.invalidate(inventorySummaryProvider);
+                        ref.invalidate(dashboardMetricsProvider);
+
+                        final newStock = (res['newStock'] as num?)?.toDouble() ??
+                            (isAddition ? _currentStock + qty : (_currentStock - qty).clamp(0, double.infinity));
+
+                        setState(() {
+                          _currentStock = newStock;
+                        });
+
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Stock adjusted successfully to $_currentStock ${widget.product.unit}'),
+                              backgroundColor: AppTheme.emeraldGreen,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => _isAdjusting = false);
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: AppTheme.primaryRed,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: _isAdjusting
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Update Stock'),
             ),
           ],
         ),

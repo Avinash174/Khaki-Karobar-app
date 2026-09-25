@@ -1,14 +1,14 @@
 import '../core/network/api_client.dart';
-import '../models/customer_model.dart';
+import '../models/supplier_model.dart';
 
-class CustomerService {
+class SupplierService {
   final ApiClient _client;
 
-  CustomerService(this._client);
+  SupplierService(this._client);
 
-  Future<List<CustomerModel>> getCustomers({String? search}) async {
+  Future<List<SupplierModel>> getSuppliers({String? search}) async {
     final response = await _client.dio.get(
-      '/customers',
+      '/suppliers',
       queryParameters: {
         if (search != null && search.isNotEmpty) 'search': search,
       },
@@ -16,47 +16,53 @@ class CustomerService {
 
     if (response.data['success'] == true) {
       final items = response.data['data']['items'] as List;
-      return items.map((e) => CustomerModel.fromJson(e)).toList();
+      return items.map((e) => SupplierModel.fromJson(e)).toList();
     }
     return [];
   }
 
-  Future<CustomerModel> createCustomer({
+  Future<SupplierModel> createSupplier({
     required String name,
     required String phone,
     String? email,
+    String? contactPerson,
+    String? gstin,
     String? city,
+    String? address,
     double openingBalance = 0,
   }) async {
     final response = await _client.dio.post(
-      '/customers',
+      '/suppliers',
       data: {
         'name': name,
         'phone': phone,
         'email': email,
+        'contactPerson': contactPerson,
+        'gstin': gstin,
         'city': city,
+        'address': address,
         'openingBalance': openingBalance,
       },
     );
 
     if (response.data['success'] == true) {
-      return CustomerModel.fromJson(response.data['data']);
+      return SupplierModel.fromJson(response.data['data']);
     } else {
-      throw Exception(response.data['message'] ?? 'Failed to create customer');
+      throw Exception(response.data['message'] ?? 'Failed to create supplier');
     }
   }
 
-  Future<CustomerModel> getCustomerById(String id) async {
-    final response = await _client.dio.get('/customers/$id');
+  Future<SupplierModel> getSupplierById(String id) async {
+    final response = await _client.dio.get('/suppliers/$id');
     if (response.data['success'] == true) {
-      return CustomerModel.fromJson(response.data['data']);
+      return SupplierModel.fromJson(response.data['data']);
     } else {
-      throw Exception(response.data['message'] ?? 'Failed to fetch customer');
+      throw Exception(response.data['message'] ?? 'Failed to fetch supplier');
     }
   }
 
-  Future<List<dynamic>> getCustomerLedger(String id) async {
-    final response = await _client.dio.get('/customers/$id/ledger');
+  Future<List<dynamic>> getSupplierLedger(String id) async {
+    final response = await _client.dio.get('/suppliers/$id/ledger');
     if (response.data['success'] == true) {
       final data = response.data['data'];
       if (data is List) return data;
@@ -66,4 +72,3 @@ class CustomerService {
     return [];
   }
 }
-
